@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/workspaces/Newliveaudioapp/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/home/codespace/Android/Sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/workspaces/Newliveaudioapp/app/.cxx/Debug/4v2g292a/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/home/codespace/Android/Sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/workspaces/Newliveaudioapp/app/.cxx/Debug/4v2g292a/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "spatialaudio::@6890427a1f51a3e7e1df": {
+      "artifactName": "spatialaudio",
+      "abi": "x86_64",
+      "output": "/workspaces/Newliveaudioapp/app/build/intermediates/cxx/Debug/4v2g292a/obj/x86_64/libspatialaudio.so",
+      "runtimeFiles": []
+    }
+  }
+}

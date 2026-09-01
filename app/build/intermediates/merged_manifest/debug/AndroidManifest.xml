@@ -41,6 +41,19 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name="com.tuapp.spatialaudio.MusicFXService"
+            android:exported="true"
+            android:label="Spatial 3D Engine" >
+            <intent-filter>
+                <action android:name="android.media.audiofx.MusicFX" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.media.audiofx.MusicFX"
+                android:resource="@xml/musicfx" />
+        </service>
+
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="com.tuapp.spatialaudio.androidx-startup"

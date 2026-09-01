@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:2:1-25:12
-INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:2:1-25:12
-INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:2:1-25:12
-INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:2:1-25:12
+ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:2:1-37:12
+INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:2:1-37:12
+INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:2:1-37:12
+INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:2:1-37:12
 MERGED from [com.google.android.material:material:1.12.0] /home/codespace/.gradle/caches/transforms-3/e2a5ad6384e4c5b1c3c3ff3a6592c4a6/transformed/material-1.12.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /home/codespace/.gradle/caches/transforms-3/1e1595b7c6f526c1197188213d830864/transformed/constraintlayout-2.0.1/AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] /home/codespace/.gradle/caches/transforms-3/4d291af891452286c84826c00582a971/transformed/appcompat-resources-1.6.1/AndroidManifest.xml:17:1-22:12
@@ -91,8 +91,8 @@ ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:6:5-71
 	android:name
 		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:6:22-68
 application
-ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:8:5-24:19
-INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:8:5-24:19
+ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:8:5-36:19
+INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:8:5-36:19
 MERGED from [com.google.android.material:material:1.12.0] /home/codespace/.gradle/caches/transforms-3/e2a5ad6384e4c5b1c3c3ff3a6592c4a6/transformed/material-1.12.0/AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.12.0] /home/codespace/.gradle/caches/transforms-3/e2a5ad6384e4c5b1c3c3ff3a6592c4a6/transformed/material-1.12.0/AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /home/codespace/.gradle/caches/transforms-3/1e1595b7c6f526c1197188213d830864/transformed/constraintlayout-2.0.1/AndroidManifest.xml:9:5-20
@@ -143,6 +143,26 @@ category#android.intent.category.LAUNCHER
 ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:21:17-77
 	android:name
 		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:21:27-74
+service#com.tuapp.spatialaudio.MusicFXService
+ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:25:9-35:19
+	android:label
+		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:28:13-46
+	android:exported
+		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:27:13-36
+	android:name
+		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:26:13-43
+intent-filter#action:name:android.media.audiofx.MusicFX
+ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:29:13-31:29
+action#android.media.audiofx.MusicFX
+ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:30:17-72
+	android:name
+		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:30:25-69
+meta-data#android.media.audiofx.MusicFX
+ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:32:13-34:51
+	android:resource
+		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:34:17-48
+	android:name
+		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:33:17-61
 uses-sdk
 INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml

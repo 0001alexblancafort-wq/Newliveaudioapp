@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<effect>
+    <name>Spatial 3D Engine</name>
+    <uuid>7ae72440-e5d2-11ee-a523-0002a5d5c51b</uuid>
+    <type>insert</type>
+    <flags>0x00000001</flags>
+</effect>

@@ -21,5 +21,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".MusicFXService"
+            android:exported="true"
+            android:label="Spatial 3D Engine">
+            <intent-filter>
+                <action android:name="android.media.audiofx.MusicFX" />
+            </intent-filter>
+            <meta-data
+                android:name="android.media.audiofx.MusicFX"
+                android:resource="@xml/musicfx" />
+        </service>
     </application>
 </manifest>
