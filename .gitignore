@@ -1,0 +1,16 @@
+# Android build output
+/app/build/
+**/build/
+.gradle/
+**/.gradle/
+local.properties
+
+# large datasets and media files
+*.zip
+*.sofa
+*.rar
+*.tar
+*.gz
+
+datasets/*
+!datasets/.gitkeep
