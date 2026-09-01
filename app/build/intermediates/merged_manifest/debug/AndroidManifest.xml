@@ -51,7 +51,7 @@
 
             <meta-data
                 android:name="android.media.audiofx.MusicFX"
-                android:resource="@xml/musicfx" />
+                android:resource="@xml/musicfx_definition" />
         </service>
 
         <provider

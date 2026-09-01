@@ -1,3 +1,4 @@
+com.tuapp.spatialaudio:xml/musicfx_definition = 0x7f110001
 com.tuapp.spatialaudio:xml/musicfx = 0x7f110000
 com.tuapp.spatialaudio:styleable/ViewBackgroundHelper = 0x7f10008f
 com.tuapp.spatialaudio:styleable/View = 0x7f10008e

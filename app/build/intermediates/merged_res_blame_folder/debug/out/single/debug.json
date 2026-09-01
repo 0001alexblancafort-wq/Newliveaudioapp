@@ -1,6 +1,14 @@
 [
     {
-        "merged": "com.tuapp.spatialaudio.app-merged_res-53:/xml_musicfx.xml.flat",
-        "source": "com.tuapp.spatialaudio.app-main-55:/xml/musicfx.xml"
+        "merged": "/home/codespace/.gradle/daemon/8.2/com.tuapp.spatialaudio.app-merged_res-53:/xml_musicfx_definition.xml.flat",
+        "source": "/home/codespace/.gradle/daemon/8.2/com.tuapp.spatialaudio.app-main-55:/xml/musicfx_definition.xml"
+    },
+    {
+        "merged": "/home/codespace/.gradle/daemon/8.2/com.tuapp.spatialaudio.app-merged_res-53:/xml_musicfx.xml.flat",
+        "source": "/home/codespace/.gradle/daemon/8.2/com.tuapp.spatialaudio.app-main-55:/xml/musicfx.xml"
+    },
+    {
+        "merged": "com.tuapp.spatialaudio.app-merged_res-53:/xml_musicfx_definition.xml.flat",
+        "source": "com.tuapp.spatialaudio.app-main-55:/xml/musicfx_definition.xml"
     }
 ]

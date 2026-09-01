@@ -50,7 +50,7 @@ cmake_ninja_workdir = /workspaces/Newliveaudioapp/app/.cxx/Debug/4v2g292a/x86_64
 build cmake_object_order_depends_target_spatialaudio: phony || CMakeFiles/spatialaudio.dir
 
 build CMakeFiles/spatialaudio.dir/native_spatial_audio.cpp.o: CXX_COMPILER__spatialaudio_Debug /workspaces/Newliveaudioapp/app/src/main/cpp/native_spatial_audio.cpp || cmake_object_order_depends_target_spatialaudio
-  DEFINES = -Dspatialaudio_EXPORTS
+  DEFINES = -DSPATIAL_USE_SOFA=0 -Dspatialaudio_EXPORTS
   DEP_FILE = CMakeFiles/spatialaudio.dir/native_spatial_audio.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17
   INCLUDES = -I/workspaces/Newliveaudioapp/app/src/main/cpp

@@ -158,9 +158,9 @@ ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:30:17-72
 	android:name
 		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:30:25-69
 meta-data#android.media.audiofx.MusicFX
-ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:32:13-34:51
+ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:32:13-34:62
 	android:resource
-		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:34:17-48
+		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:34:17-59
 	android:name
 		ADDED from /workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:33:17-61
 uses-sdk

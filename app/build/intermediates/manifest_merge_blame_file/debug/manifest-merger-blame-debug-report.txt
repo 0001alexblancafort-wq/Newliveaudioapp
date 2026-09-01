@@ -86,11 +86,11 @@
 50            </intent-filter>
 51
 52            <meta-data
-52-->/workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:32:13-34:51
+52-->/workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:32:13-34:62
 53                android:name="android.media.audiofx.MusicFX"
 53-->/workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:33:17-61
-54                android:resource="@xml/musicfx" />
-54-->/workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:34:17-48
+54                android:resource="@xml/musicfx_definition" />
+54-->/workspaces/Newliveaudioapp/app/src/main/AndroidManifest.xml:34:17-59
 55        </service>
 56
 57        <provider

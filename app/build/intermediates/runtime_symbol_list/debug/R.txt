@@ -6840,3 +6840,4 @@ int styleable ViewStubCompat_android_id 0
 int styleable ViewStubCompat_android_layout 1
 int styleable ViewStubCompat_android_inflatedId 2
 int xml musicfx 0x7f110000
+int xml musicfx_definition 0x7f110001

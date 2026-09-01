@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
             var elevation by remember { mutableFloatStateOf(45f) }
             var proximity by remember { mutableFloatStateOf(0.5f) }
             var isProcessing by remember { mutableStateOf(false) }
+            var hrtfLoaded by remember { mutableStateOf(false) }
             var lastL by remember { mutableFloatStateOf(0f) }
             var lastR by remember { mutableFloatStateOf(0f) }
 
@@ -50,6 +51,11 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(azimuth, elevation, proximity) {
                 nativeAudio.setParameters(azimuth, elevation, proximity)
+            }
+
+            LaunchedEffect(Unit) {
+                val ok = nativeAudio.loadHrtfFromFile("/data/local/tmp/HRTF.bin")
+                hrtfLoaded = ok
             }
 
             MaterialTheme {
@@ -98,6 +104,8 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(24.dp))
 
+                        Text(text = if (hrtfLoaded) "HRTF cargado" else "HRTF fallback activo")
+
                         Button(
                             onClick = {
                                 val frames = 256
@@ -118,7 +126,7 @@ class MainActivity : ComponentActivity() {
                                 isProcessing = !isProcessing
                             }
                         ) {
-                            Text(if (isProcessing) "Procesar buffer" else "Procesar buffer")
+                            Text("Procesar buffer")
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

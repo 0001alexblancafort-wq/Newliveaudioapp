@@ -2,3 +2,4 @@ R_DEF: Internal format may change without notice
 local
 style Theme.SpatialAudioApp
 xml musicfx
+xml musicfx_definition
