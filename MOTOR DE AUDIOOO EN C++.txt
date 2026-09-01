@@ -1,0 +1,431 @@
+#include <jni.h>
+#include <android/log.h>
+#include <hardware/audio_effect.h>
+#include <pffft.h>
+#include <cmath>
+#include <cstring>
+#include <vector>
+#include <mutex>
+
+#define LOG_TAG "SpatialEffect"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+// ========================
+// Configuración
+// ========================
+constexpr int BLOCK_SIZE = 256;
+constexpr int FFT_SIZE = BLOCK_SIZE * 2;      // 512
+constexpr int BINS_UNICOS = FFT_SIZE / 2 + 1; // 257
+
+// Parámetros personalizados (IDs)
+enum {
+    SPATIAL_PARAM_TRASERA = 0,
+    SPATIAL_PARAM_ELEVACION,
+    SPATIAL_PARAM_PROXIMIDAD
+};
+
+// ========================
+// Estructura HRTF
+// ========================
+struct HRTFCoeffs {
+    float reL[BINS_UNICOS];
+    float imL[BINS_UNICOS];
+    float reR[BINS_UNICOS];
+    float imR[BINS_UNICOS];
+};
+
+// ========================
+// Variables globales (solo lectura tras init)
+// ========================
+static PFFFT_Setup* gFftSetup = nullptr;
+static HRTFCoeffs hrtfFront, hrtfRear, hrtfTop;
+static std::once_flag gInitFlag;
+
+// Carga de HRTFs (valores unitarios, reemplazar con carga SOFA)
+static void loadHRTFs() {
+    for (int k = 0; k < BINS_UNICOS; ++k) {
+        hrtfFront.reL[k] = 1.0f; hrtfFront.imL[k] = 0.0f;
+        hrtfFront.reR[k] = 1.0f; hrtfFront.imR[k] = 0.0f;
+        hrtfRear.reL[k] = 1.0f;  hrtfRear.imL[k] = 0.0f;
+        hrtfRear.reR[k] = 1.0f;  hrtfRear.imR[k] = 0.0f;
+        hrtfTop.reL[k] = 1.0f;   hrtfTop.imL[k] = 0.0f;
+        hrtfTop.reR[k] = 1.0f;   hrtfTop.imR[k] = 0.0f;
+    }
+    LOGI("HRTFs initialized (unit gain)");
+}
+
+// Inicialización única
+static void ensureInitialized() {
+    std::call_once(gInitFlag, []() {
+        gFftSetup = pffft_new_setup(FFT_SIZE, PFFFT_REAL);
+        if (!gFftSetup) {
+            LOGE("Failed to create PFFFT setup");
+            return;
+        }
+        loadHRTFs();
+        LOGI("Spatial engine initialized");
+    });
+}
+
+// Multiplicación compleja acumulativa
+inline void complexMultiplyAccum(float re1, float im1, float re2, float im2,
+                                 float &accRe, float &accIm) {
+    accRe += re1 * re2 - im1 * im2;
+    accIm += re1 * im2 + im1 * re2;
+}
+
+// ========================
+// Contexto del efecto (por instancia)
+// ========================
+struct SpatialEffectContext {
+    const struct effect_interface_s *itfe;
+    effect_config_t config;
+    bool enabled;
+
+    float histL[BLOCK_SIZE];
+    float histR[BLOCK_SIZE];
+
+    float espacialidadTrasera;
+    float factorElevacion;
+    float proximidadCampo;
+
+    SpatialEffectContext() : itfe(nullptr), enabled(false),
+                             espacialidadTrasera(1.0f),
+                             factorElevacion(1.0f),
+                             proximidadCampo(0.0f) {
+        memset(histL, 0, sizeof(histL));
+        memset(histR, 0, sizeof(histR));
+        memset(&config, 0, sizeof(config));
+    }
+};
+
+// ========================
+// Procesamiento de bloque
+// ========================
+static void processSpatialBlock(SpatialEffectContext *ctx,
+                                const float *input,   // intercalado L,R
+                                float *output,        // intercalado L,R
+                                int numFrames) {
+    if (numFrames != BLOCK_SIZE) {
+        // Si no es el tamaño esperado, bypass
+        memcpy(output, input, numFrames * 2 * sizeof(float));
+        return;
+    }
+
+    // Separar canales
+    float inL[BLOCK_SIZE], inR[BLOCK_SIZE];
+    for (int i = 0; i < BLOCK_SIZE; ++i) {
+        inL[i] = input[i * 2];
+        inR[i] = input[i * 2 + 1];
+    }
+
+    // Buffers para FFT
+    float timeL[FFT_SIZE], timeR[FFT_SIZE];
+    float workL[FFT_SIZE], workR[FFT_SIZE];
+
+    // Overlap-Save: historia + nuevas muestras
+    memcpy(timeL, ctx->histL, BLOCK_SIZE * sizeof(float));
+    memcpy(timeR, ctx->histR, BLOCK_SIZE * sizeof(float));
+    for (int i = 0; i < BLOCK_SIZE; ++i) {
+        timeL[BLOCK_SIZE + i] = inL[i];
+        timeR[BLOCK_SIZE + i] = inR[i];
+    }
+
+    // Actualizar historia
+    memcpy(ctx->histL, inL, BLOCK_SIZE * sizeof(float));
+    memcpy(ctx->histR, inR, BLOCK_SIZE * sizeof(float));
+
+    // FFT forward
+    pffft_transform_ordered(gFftSetup, timeL, workL, nullptr, PFFFT_FORWARD);
+    pffft_transform_ordered(gFftSetup, timeR, workR, nullptr, PFFFT_FORWARD);
+
+    // Extraer partes real/imaginaria correctamente
+    float reL[BINS_UNICOS], imL[BINS_UNICOS];
+    float reR[BINS_UNICOS], imR[BINS_UNICOS];
+    for (int k = 0; k < BINS_UNICOS; ++k) {
+        reL[k] = workL[k];
+        reR[k] = workR[k];
+        if (k == 0 || k == FFT_SIZE / 2) {
+            imL[k] = 0.0f;
+            imR[k] = 0.0f;
+        } else {
+            imL[k] = workL[FFT_SIZE - k];
+            imR[k] = workR[FFT_SIZE - k];
+        }
+    }
+
+    // Acumuladores espectrales
+    float accReL[BINS_UNICOS] = {0}, accImL[BINS_UNICOS] = {0};
+    float accReR[BINS_UNICOS] = {0}, accImR[BINS_UNICOS] = {0};
+
+    // Frecuencia de muestreo real
+    const float sampleRate = (float)ctx->config.inputCfg.samplingRate;
+
+    // Procesamiento por bin
+    for (int k = 0; k < BINS_UNICOS; ++k) {
+        // Mid/Side
+        float midRe = (reL[k] + reR[k]) * 0.5f;
+        float midIm = (imL[k] + imR[k]) * 0.5f;
+        float sideRe = (reL[k] - reR[k]) * 0.5f;
+        float sideIm = (imL[k] - imR[k]) * 0.5f;
+
+        // Componente de techo
+        float freq = k * sampleRate / FFT_SIZE;
+        float topRe = 0.0f, topIm = 0.0f;
+        if (freq > 6000.0f) {
+            topRe = midRe * ctx->factorElevacion;
+            topIm = midIm * ctx->factorElevacion;
+        }
+
+        // Convolución con HRTFs
+        complexMultiplyAccum(midRe, midIm, hrtfFront.reL[k], hrtfFront.imL[k], accReL[k], accImL[k]);
+        complexMultiplyAccum(midRe, midIm, hrtfFront.reR[k], hrtfFront.imR[k], accReR[k], accImR[k]);
+
+        complexMultiplyAccum(sideRe * ctx->espacialidadTrasera, sideIm * ctx->espacialidadTrasera,
+                             hrtfRear.reL[k], hrtfRear.imL[k], accReL[k], accImL[k]);
+        complexMultiplyAccum(sideRe * ctx->espacialidadTrasera, sideIm * ctx->espacialidadTrasera,
+                             hrtfRear.reR[k], hrtfRear.imR[k], accReR[k], accImR[k]);
+
+        complexMultiplyAccum(topRe, topIm, hrtfTop.reL[k], hrtfTop.imL[k], accReL[k], accImL[k]);
+        complexMultiplyAccum(topRe, topIm, hrtfTop.reR[k], hrtfTop.imR[k], accReR[k], accImR[k]);
+    }
+
+    // Modelo de campo cercano (solo oído izquierdo, simplificado)
+    if (ctx->proximidadCampo > 0.0f) {
+        for (int k = 0; k < BINS_UNICOS; ++k) {
+            float freq = k * sampleRate / FFT_SIZE;
+            if (freq < 20.0f) freq = 20.0f;
+            float factor = 1.0f + ctx->proximidadCampo * (1000.0f / freq);
+            accReL[k] *= factor;
+            accImL[k] *= factor;
+        }
+    }
+
+    // Preparar espectro para IFFT
+    float outWorkL[FFT_SIZE], outWorkR[FFT_SIZE];
+    // Poner a cero todo para evitar basura en bins simétricos
+    memset(outWorkL, 0, sizeof(outWorkL));
+    memset(outWorkR, 0, sizeof(outWorkR));
+
+    for (int k = 0; k < BINS_UNICOS; ++k) {
+        outWorkL[k] = accReL[k];
+        outWorkR[k] = accReR[k];
+        if (k > 0 && k < FFT_SIZE / 2) {
+            outWorkL[FFT_SIZE - k] = accImL[k];
+            outWorkR[FFT_SIZE - k] = accImR[k];
+        }
+    }
+
+    // IFFT
+    float outTimeL[FFT_SIZE], outTimeR[FFT_SIZE];
+    pffft_transform_ordered(gFftSetup, outWorkL, outTimeL, nullptr, PFFFT_BACKWARD);
+    pffft_transform_ordered(gFftSetup, outWorkR, outTimeR, nullptr, PFFFT_BACKWARD);
+
+    // Normalizar y Overlap-Save
+    for (int i = 0; i < BLOCK_SIZE; ++i) {
+        output[i * 2]     = outTimeL[BLOCK_SIZE + i] / FFT_SIZE;
+        output[i * 2 + 1] = outTimeR[BLOCK_SIZE + i] / FFT_SIZE;
+    }
+}
+
+// ========================
+// Interfaz de efecto Android
+// ========================
+
+static int32_t spatial_process(effect_handle_t self, audio_buffer_t *in, audio_buffer_t *out) {
+    SpatialEffectContext *ctx = (SpatialEffectContext *)self;
+    if (!ctx || !in || !out)
+        return -EINVAL;
+
+    if (!ctx->enabled) {
+        if (in->raw != out->raw) {
+            memcpy(out->raw, in->raw, in->frameCount * 2 * sizeof(float)); // asumimos 2 canales float
+        }
+        return 0;
+    }
+
+    if (in->frameCount != BLOCK_SIZE) {
+        memcpy(out->raw, in->raw, in->frameCount * 2 * sizeof(float));
+        return 0;
+    }
+
+    float *inputBuf = (float*)in->raw;
+    float *outputBuf = (float*)out->raw;
+    processSpatialBlock(ctx, inputBuf, outputBuf, BLOCK_SIZE);
+    return 0;
+}
+
+static int32_t spatial_command(effect_handle_t self, uint32_t cmdCode, uint32_t cmdSize,
+                               void *pCmdData, uint32_t *replySize, void *pReplyData) {
+    SpatialEffectContext *ctx = (SpatialEffectContext *)self;
+    if (!ctx)
+        return -EINVAL;
+
+    switch (cmdCode) {
+    case EFFECT_CMD_INIT:
+        return 0;
+
+    case EFFECT_CMD_SET_CONFIG: {
+        if (pCmdData == nullptr || cmdSize != sizeof(effect_config_t))
+            return -EINVAL;
+        ctx->config = *(effect_config_t*)pCmdData;
+        return 0;
+    }
+
+    case EFFECT_CMD_GET_CONFIG:
+        if (pReplyData == nullptr || *replySize != sizeof(effect_config_t))
+            return -EINVAL;
+        *(effect_config_t*)pReplyData = ctx->config;
+        return 0;
+
+    case EFFECT_CMD_ENABLE:
+        ctx->enabled = true;
+        return 0;
+
+    case EFFECT_CMD_DISABLE:
+        ctx->enabled = false;
+        return 0;
+
+    case EFFECT_CMD_RESET:
+        memset(ctx->histL, 0, sizeof(ctx->histL));
+        memset(ctx->histR, 0, sizeof(ctx->histR));
+        return 0;
+
+    case EFFECT_CMD_SET_PARAM: {
+        if (pCmdData == nullptr || cmdSize < sizeof(effect_param_t))
+            return -EINVAL;
+        effect_param_t *param = (effect_param_t*)pCmdData;
+        // Verificar que el tamaño total sea coherente
+        if (cmdSize < sizeof(effect_param_t) + param->psize + param->vsize)
+            return -EINVAL;
+        if (param->psize != sizeof(int32_t) || param->vsize != sizeof(float))
+            return -EINVAL;
+        int32_t paramId = *(int32_t*)param->data;
+        float value = *(float*)(param->data + param->psize);
+
+        switch (paramId) {
+        case SPATIAL_PARAM_TRASERA:
+            ctx->espacialidadTrasera = value;
+            break;
+        case SPATIAL_PARAM_ELEVACION:
+            ctx->factorElevacion = value;
+            break;
+        case SPATIAL_PARAM_PROXIMIDAD:
+            ctx->proximidadCampo = value;
+            break;
+        default:
+            return -EINVAL;
+        }
+        return 0;
+    }
+
+    case EFFECT_CMD_GET_PARAM: {
+        if (pCmdData == nullptr || cmdSize < sizeof(effect_param_t) || pReplyData == nullptr)
+            return -EINVAL;
+        effect_param_t *param = (effect_param_t*)pCmdData;
+        if (param->psize != sizeof(int32_t))
+            return -EINVAL;
+        int32_t paramId = *(int32_t*)param->data;
+        if (*replySize < sizeof(effect_param_t) + sizeof(float))
+            return -EINVAL;
+
+        effect_param_t *reply = (effect_param_t*)pReplyData;
+        reply->status = 0;
+        reply->psize = sizeof(int32_t);
+        reply->vsize = sizeof(float);
+        *(int32_t*)reply->data = paramId;
+        float value = 0.0f;
+        switch (paramId) {
+        case SPATIAL_PARAM_TRASERA:
+            value = ctx->espacialidadTrasera;
+            break;
+        case SPATIAL_PARAM_ELEVACION:
+            value = ctx->factorElevacion;
+            break;
+        case SPATIAL_PARAM_PROXIMIDAD:
+            value = ctx->proximidadCampo;
+            break;
+        default:
+            return -EINVAL;
+        }
+        *(float*)(reply->data + reply->psize) = value;
+        *replySize = sizeof(effect_param_t) + sizeof(float);
+        return 0;
+    }
+
+    default:
+        return -EINVAL;
+    }
+}
+
+static int32_t spatial_get_descriptor(effect_handle_t self, effect_descriptor_t *pDescriptor) {
+    static const effect_descriptor_t descriptor = {
+        {0x7ae72440, 0xe5d2, 0x11ee, 0xa523, {0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b}}, // type: insert
+        {0x12345678, 0x1234, 0x1234, 0x1234, {0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc}}, // uuid (único)
+        EFFECT_CONTROL_API_VERSION,
+        EFFECT_FLAG_TYPE_INSERT | EFFECT_FLAG_INSERT_FIRST,
+        0, // FIXME: nombre del efecto
+        "Spatial 3D Engine",
+        "TuNombre",
+    };
+    *pDescriptor = descriptor;
+    return 0;
+}
+
+// Interfaz
+static const struct effect_interface_s gSpatialInterface = {
+    spatial_process,
+    spatial_command,
+    spatial_get_descriptor,
+    nullptr
+};
+
+// ========================
+// Funciones exportadas
+// ========================
+
+extern "C" int32_t effect_create(const effect_uuid_t *uid, int32_t sessionId, effect_handle_t *pHandle) {
+    ensureInitialized();
+    if (!gFftSetup) {
+        LOGE("PFFFT not initialized");
+        return -EINVAL;
+    }
+
+    SpatialEffectContext *ctx = new SpatialEffectContext();
+    if (!ctx) {
+        return -ENOMEM;
+    }
+    ctx->itfe = &gSpatialInterface;
+    ctx->enabled = false;
+
+    // Configuración por defecto: estéreo float, 48 kHz
+    ctx->config.inputCfg.accessMode = EFFECT_BUFFER_ACCESS_WRITE;
+    ctx->config.inputCfg.channels = AUDIO_CHANNEL_OUT_STEREO;
+    ctx->config.inputCfg.format = AUDIO_FORMAT_PCM_FLOAT;
+    ctx->config.inputCfg.samplingRate = 48000;
+    ctx->config.inputCfg.bufferProvider.getBuffer = nullptr;
+    ctx->config.inputCfg.bufferProvider.releaseBuffer = nullptr;
+    ctx->config.inputCfg.bufferProvider.cookie = nullptr;
+    ctx->config.inputCfg.mask = EFFECT_CONFIG_ALL;
+    ctx->config.outputCfg = ctx->config.inputCfg;
+
+    *pHandle = (effect_handle_t)ctx;
+    return 0;
+}
+
+extern "C" int32_t effect_release(effect_handle_t handle) {
+    SpatialEffectContext *ctx = (SpatialEffectContext*)handle;
+    if (ctx)
+        delete ctx;
+    return 0;
+}
+
+extern "C" int32_t effect_get_descriptor(const effect_uuid_t *uid, effect_descriptor_t *pDescriptor) {
+    return spatial_get_descriptor(nullptr, pDescriptor);
+}
+
+// Opcional si se usa desde Java
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    return JNI_VERSION_1_6;
+}
