@@ -1,8 +1,11 @@
 package com.tuapp.spatialaudio
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +29,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -41,8 +46,30 @@ class MainActivity : ComponentActivity() {
             var hrtfLoaded by remember { mutableStateOf(false) }
             var lastL by remember { mutableFloatStateOf(0f) }
             var lastR by remember { mutableFloatStateOf(0f) }
+            var importing by remember { mutableStateOf(false) }
 
             val nativeAudio = remember { NativeSpatialAudio() }
+            val hrtfTarget = File(filesDir, "HRTF.bin")
+            val sofaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+                if (uri == null) return@rememberLauncherForActivityResult
+                importing = true
+                val input = contentResolver.openInputStream(uri) ?: run {
+                    importing = false
+                    return@rememberLauncherForActivityResult
+                }
+                val tempSofa = File(filesDir, "imported.sofa")
+                val output = FileOutputStream(tempSofa)
+                input.copyTo(output)
+                input.close()
+                output.close()
+
+                val ok = SofaImporter.convertImportedSofaToNativeHrtf(tempSofa.absolutePath, hrtfTarget.absolutePath)
+                hrtfLoaded = ok
+                importing = false
+                if (ok) {
+                    nativeAudio.loadHrtfFromFile(hrtfTarget.absolutePath)
+                }
+            }
 
             DisposableEffect(nativeAudio) {
                 nativeAudio.initEngine(48000, 2)
@@ -105,6 +132,17 @@ class MainActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(24.dp))
 
                         Text(text = if (hrtfLoaded) "HRTF cargado" else "HRTF fallback activo")
+
+                        Button(
+                            onClick = {
+                                val mimeTypes = arrayOf("application/octet-stream", "application/sofa", "text/plain")
+                                sofaPicker.launch(mimeTypes)
+                            }
+                        ) {
+                            Text(if (importing) "Importando..." else "Añadir SOFA")
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Button(
                             onClick = {
