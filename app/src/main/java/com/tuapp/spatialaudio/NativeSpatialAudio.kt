@@ -10,5 +10,7 @@ class NativeSpatialAudio {
     external fun setParameters(azimuth: Float, elevation: Float, proximity: Float)
     external fun loadHrtfFromFile(path: String): Boolean
     external fun convertSofaToHrtf(sourcePath: String, targetPath: String, sampleRate: Int): Boolean
+    external fun startAudio(): Boolean
+    external fun stopAudio()
     external fun processBuffer(input: FloatArray, output: FloatArray, frames: Int): Int
 }

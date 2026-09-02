@@ -4,6 +4,8 @@ project(spatialaudio LANGUAGES CXX)
 
 option(SPATIAL_USE_SOFA "Enable libmysofa SOFA processing" ON)
 
+find_package(oboe REQUIRED CONFIG)
+
 add_library(spatialaudio SHARED
     native_spatial_audio.cpp
 )
@@ -46,6 +48,7 @@ endif()
 target_link_libraries(spatialaudio
     ${log-lib}
     android
+    oboe::oboe
 )
 
 set_target_properties(spatialaudio PROPERTIES

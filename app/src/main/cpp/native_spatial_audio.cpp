@@ -1,5 +1,6 @@
 #include <jni.h>
 #include <android/log.h>
+#include <oboe/Oboe.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -207,6 +208,32 @@ private:
 
 std::unique_ptr<SpatialAudioEngine> gEngine;
 
+class AudioCallback final : public oboe::AudioStreamDataCallback {
+public:
+    oboe::DataCallbackResult onAudioReady(oboe::AudioStream* /*stream*/, void* audioData,
+                                          int32_t numFrames) override {
+        auto* output = static_cast<float*>(audioData);
+        input_.resize(static_cast<size_t>(numFrames) * 2);
+        for (int32_t frame = 0; frame < numFrames; ++frame) {
+            const float time = phase_ / 48000.0f;
+            phase_ += 1.0f;
+            input_[static_cast<size_t>(frame) * 2] = std::sin(2.0f * kPi * 440.0f * time) * 0.2f;
+            input_[static_cast<size_t>(frame) * 2 + 1] = std::sin(2.0f * kPi * 330.0f * time) * 0.2f;
+        }
+        if (gEngine == nullptr || gEngine->processBuffer(input_.data(), output, numFrames) != 0) {
+            std::fill(output, output + static_cast<size_t>(numFrames) * 2, 0.0f);
+        }
+        return oboe::DataCallbackResult::Continue;
+    }
+
+private:
+    std::vector<float> input_;
+    float phase_ = 0.0f;
+};
+
+std::shared_ptr<oboe::AudioStream> gOutputStream;
+std::shared_ptr<AudioCallback> gAudioCallback;
+
 #if SPATIAL_USE_SOFA
 bool convertSofaToHrtf(const std::string& sourcePath, const std::string& targetPath, int sampleRate) {
     int filterLength = 0;
@@ -296,6 +323,49 @@ Java_com_tuapp_spatialaudio_NativeSpatialAudio_convertSofaToHrtf(JNIEnv* env, jo
 #else
     return JNI_FALSE;
 #endif
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_tuapp_spatialaudio_NativeSpatialAudio_startAudio(JNIEnv* /*env*/, jobject /*thiz*/) {
+    if (gEngine == nullptr) return JNI_FALSE;
+    if (gOutputStream != nullptr) return JNI_TRUE;
+
+    gAudioCallback = std::make_shared<AudioCallback>();
+    oboe::AudioStreamBuilder builder;
+    builder.setDirection(oboe::Direction::Output)
+        ->setFormat(oboe::AudioFormat::Float)
+        ->setChannelCount(2)
+        ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
+        ->setSharingMode(oboe::SharingMode::Shared)
+        ->setDataCallback(gAudioCallback.get());
+
+    oboe::Result result = builder.openStream(gOutputStream);
+    if (result != oboe::Result::OK) {
+        LOGE("Oboe could not open output stream: %s", oboe::convertToText(result));
+        gOutputStream.reset();
+        gAudioCallback.reset();
+        return JNI_FALSE;
+    }
+
+    result = gOutputStream->requestStart();
+    if (result != oboe::Result::OK) {
+        LOGE("Oboe could not start output stream: %s", oboe::convertToText(result));
+        gOutputStream->close();
+        gOutputStream.reset();
+        gAudioCallback.reset();
+        return JNI_FALSE;
+    }
+    return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_tuapp_spatialaudio_NativeSpatialAudio_stopAudio(JNIEnv* /*env*/, jobject /*thiz*/) {
+    if (gOutputStream != nullptr) {
+        gOutputStream->requestStop();
+        gOutputStream->close();
+        gOutputStream.reset();
+    }
+    gAudioCallback.reset();
 }
 
 extern "C" JNIEXPORT jint JNICALL
