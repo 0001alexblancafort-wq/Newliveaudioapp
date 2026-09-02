@@ -1,9 +1,14 @@
 #include <jni.h>
 #include <android/log.h>
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
+#include <exception>
 #include <fstream>
+#include <memory>
 #include <mutex>
+#include <string>
 #include <vector>
 
 #if SPATIAL_USE_SOFA
@@ -17,6 +22,7 @@
 namespace {
 constexpr float kPi = 3.14159265358979323846f;
 constexpr int kFIRSize = 32;
+constexpr std::uint32_t kMaxHrtfTaps = 4096;
 
 struct HrtfProfile {
     bool loaded = false;
@@ -68,15 +74,6 @@ public:
 
     bool loadHrtfFromFile(const std::string& path) {
         std::lock_guard<std::mutex> lock(mutex_);
-#if SPATIAL_USE_SOFA
-        LOGI("Loading SOFA/HRIR data from %s", path.c_str());
-        // En una integración completa, aquí se leería el SOFA con libmysofa y se convertiría a HRTF FIR.
-        // Este proyecto deja la rama preparada para la librería real; por ahora se usa la base de respaldo.
-        (void)path;
-        profile_.loaded = true;
-        generateFallbackProfile();
-        return true;
-#else
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             LOGE("HRTF file not found: %s", path.c_str());
@@ -98,10 +95,23 @@ public:
         file.read(reinterpret_cast<char*>(&leftCount), sizeof(leftCount));
         file.read(reinterpret_cast<char*>(&rightCount), sizeof(rightCount));
 
+        if (!file || leftCount == 0 || rightCount == 0 ||
+            leftCount > kMaxHrtfTaps || rightCount > kMaxHrtfTaps) {
+            LOGE("Invalid HRTF tap counts in %s", path.c_str());
+            generateFallbackProfile();
+            return false;
+        }
+
         profile_.left.resize(leftCount, 0.0f);
         profile_.right.resize(rightCount, 0.0f);
         file.read(reinterpret_cast<char*>(profile_.left.data()), static_cast<std::streamsize>(leftCount * sizeof(float)));
         file.read(reinterpret_cast<char*>(profile_.right.data()), static_cast<std::streamsize>(rightCount * sizeof(float)));
+
+        if (!file) {
+            LOGE("Truncated HRTF file: %s", path.c_str());
+            generateFallbackProfile();
+            return false;
+        }
 
         profile_.loaded = true;
         profile_.azimuth = azimuth_;
@@ -109,7 +119,6 @@ public:
 
         LOGI("HRTF loaded from %s (%zu left taps, %zu right taps)", path.c_str(), profile_.left.size(), profile_.right.size());
         return true;
-#endif
     }
 
     int processBuffer(const float* input, float* output, int frames) {
@@ -117,7 +126,7 @@ public:
             return -1;
         }
 
-        const int stride = channels_ * 2;
+        const int stride = channels_;
         std::vector<float> leftHistory(kFIRSize, 0.0f);
         std::vector<float> rightHistory(kFIRSize, 0.0f);
 
@@ -197,6 +206,37 @@ private:
 };
 
 std::unique_ptr<SpatialAudioEngine> gEngine;
+
+#if SPATIAL_USE_SOFA
+bool convertSofaToHrtf(const std::string& sourcePath, const std::string& targetPath, int sampleRate) {
+    int filterLength = 0;
+    int error = MYSOFA_OK;
+    struct MYSOFA_EASY* easy = mysofa_open(sourcePath.c_str(), static_cast<float>(sampleRate), &filterLength, &error);
+    if (easy == nullptr || error != MYSOFA_OK || filterLength <= 0 || filterLength > static_cast<int>(kMaxHrtfTaps)) {
+        LOGE("Could not open SOFA %s (error %d, filter length %d)", sourcePath.c_str(), error, filterLength);
+        if (easy != nullptr) mysofa_close(easy);
+        return false;
+    }
+
+    std::vector<float> left(static_cast<size_t>(filterLength));
+    std::vector<float> right(static_cast<size_t>(filterLength));
+    float delayLeft = 0.0f;
+    float delayRight = 0.0f;
+    mysofa_getfilter_float(easy, 0.0f, 0.0f, 1.0f, left.data(), right.data(), &delayLeft, &delayRight);
+    mysofa_close(easy);
+
+    std::ofstream file(targetPath, std::ios::binary | std::ios::trunc);
+    if (!file.is_open()) return false;
+    const std::uint32_t leftCount = static_cast<std::uint32_t>(left.size());
+    const std::uint32_t rightCount = static_cast<std::uint32_t>(right.size());
+    file.write("HRTF1", 5);
+    file.write(reinterpret_cast<const char*>(&leftCount), sizeof(leftCount));
+    file.write(reinterpret_cast<const char*>(&rightCount), sizeof(rightCount));
+    file.write(reinterpret_cast<const char*>(left.data()), static_cast<std::streamsize>(left.size() * sizeof(float)));
+    file.write(reinterpret_cast<const char*>(right.data()), static_cast<std::streamsize>(right.size() * sizeof(float)));
+    return file.good();
+}
+#endif
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -236,6 +276,26 @@ Java_com_tuapp_spatialaudio_NativeSpatialAudio_loadHrtfFromFile(JNIEnv* env, job
     const bool ok = gEngine->loadHrtfFromFile(cPath);
     env->ReleaseStringUTFChars(path, cPath);
     return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_tuapp_spatialaudio_NativeSpatialAudio_convertSofaToHrtf(JNIEnv* env, jobject /*thiz*/, jstring sourcePath, jstring targetPath, jint sampleRate) {
+#if SPATIAL_USE_SOFA
+    if (sourcePath == nullptr || targetPath == nullptr || sampleRate <= 0) return JNI_FALSE;
+    const char* source = env->GetStringUTFChars(sourcePath, nullptr);
+    const char* target = env->GetStringUTFChars(targetPath, nullptr);
+    if (source == nullptr || target == nullptr) {
+        if (source != nullptr) env->ReleaseStringUTFChars(sourcePath, source);
+        if (target != nullptr) env->ReleaseStringUTFChars(targetPath, target);
+        return JNI_FALSE;
+    }
+    const bool ok = convertSofaToHrtf(source, target, sampleRate);
+    env->ReleaseStringUTFChars(sourcePath, source);
+    env->ReleaseStringUTFChars(targetPath, target);
+    return ok ? JNI_TRUE : JNI_FALSE;
+#else
+    return JNI_FALSE;
+#endif
 }
 
 extern "C" JNIEXPORT jint JNICALL

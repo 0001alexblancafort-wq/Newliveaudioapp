@@ -47,8 +47,10 @@ class MainActivity : ComponentActivity() {
             var lastL by remember { mutableFloatStateOf(0f) }
             var lastR by remember { mutableFloatStateOf(0f) }
             var importing by remember { mutableStateOf(false) }
+            var playing by remember { mutableStateOf(false) }
 
             val nativeAudio = remember { NativeSpatialAudio() }
+            val audioPipeline = remember { AudioPipeline(nativeAudio) }
             val hrtfTarget = File(filesDir, "HRTF.bin")
             val sofaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
                 if (uri == null) return@rememberLauncherForActivityResult
@@ -63,7 +65,7 @@ class MainActivity : ComponentActivity() {
                 input.close()
                 output.close()
 
-                val ok = SofaImporter.convertImportedSofaToNativeHrtf(tempSofa.absolutePath, hrtfTarget.absolutePath)
+                val ok = nativeAudio.convertSofaToHrtf(tempSofa.absolutePath, hrtfTarget.absolutePath, 48000)
                 hrtfLoaded = ok
                 importing = false
                 if (ok) {
@@ -73,7 +75,10 @@ class MainActivity : ComponentActivity() {
 
             DisposableEffect(nativeAudio) {
                 nativeAudio.initEngine(48000, 2)
-                onDispose { nativeAudio.releaseEngine() }
+                onDispose {
+                    audioPipeline.stop()
+                    nativeAudio.releaseEngine()
+                }
             }
 
             LaunchedEffect(azimuth, elevation, proximity) {
@@ -81,7 +86,7 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
-                val ok = nativeAudio.loadHrtfFromFile("/data/local/tmp/HRTF.bin")
+                val ok = nativeAudio.loadHrtfFromFile(hrtfTarget.absolutePath)
                 hrtfLoaded = ok
             }
 
@@ -165,6 +170,21 @@ class MainActivity : ComponentActivity() {
                             }
                         ) {
                             Text("Procesar buffer")
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Button(
+                            onClick = {
+                                if (playing) {
+                                    audioPipeline.stop()
+                                } else {
+                                    audioPipeline.start()
+                                }
+                                playing = !playing
+                            }
+                        ) {
+                            Text(if (playing) "Detener audio" else "Reproducir audio")
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

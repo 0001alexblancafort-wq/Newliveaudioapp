@@ -1,4 +1,0 @@
-/home/codespace/Android/Sdk/cmake/3.22.1/bin/ninja \
-  -C \
-  /workspaces/Newliveaudioapp/app/.cxx/Debug/4v2g292a/armeabi-v7a \
-  spatialaudio

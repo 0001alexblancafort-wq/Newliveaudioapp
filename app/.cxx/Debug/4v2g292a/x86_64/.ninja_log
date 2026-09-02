@@ -1,5 +1,5 @@
 # ninja log v5
-817	898	1788304556994174088	/workspaces/Newliveaudioapp/app/build/intermediates/cxx/Debug/4v2g292a/obj/x86_64/libspatialaudio.so	3bcfa622992db2e4
-7	817	1788304556908174088	CMakeFiles/spatialaudio.dir/native_spatial_audio.cpp.o	6d316968f723b1a4
-54	1650	1788377346247400508	CMakeFiles/spatialaudio.dir/native_spatial_audio.cpp.o	6d316968f723b1a4
-1651	2101	1788377346709400474	/workspaces/Newliveaudioapp/app/build/intermediates/cxx/Debug/4v2g292a/obj/x86_64/libspatialaudio.so	3bcfa622992db2e4
+1196	1278	1788377937879357047	/workspaces/Newliveaudioapp/app/build/intermediates/cxx/Debug/4v2g292a/obj/x86_64/libspatialaudio.so	3bcfa622992db2e4
+7	1196	1788377937791357053	CMakeFiles/spatialaudio.dir/native_spatial_audio.cpp.o	6d316968f723b1a4
+0	4	0	clean	43c467364e2bb683
+0	2	0	clean	43c467364e2bb683
