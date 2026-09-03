@@ -4,6 +4,8 @@ project(spatialaudio LANGUAGES CXX)
 
 option(SPATIAL_USE_SOFA "Enable libmysofa SOFA processing" ON)
 
+set(CMAKE_ANDROID_STL_TYPE c++_shared)
+
 find_package(oboe REQUIRED CONFIG)
 
 add_library(spatialaudio SHARED
@@ -45,7 +47,7 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/pffft/CMakeLists.txt")
     target_include_directories(spatialaudio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/pffft")
 endif()
 
-target_link_libraries(spatialaudio
+target_link_libraries(spatialaudio PRIVATE
     ${log-lib}
     android
     oboe::oboe

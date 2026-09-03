@@ -1,0 +1,5 @@
+/workspaces/Newliveaudioapp/app/src/main/cpp/CMakeLists.txt
+/workspaces/Newliveaudioapp/app/src/main/cpp/third_party/libmysofa/CMakeLists.txt
+/workspaces/Newliveaudioapp/app/src/main/cpp/third_party/libmysofa/libmysofa.pc.cmake
+/workspaces/Newliveaudioapp/app/src/main/cpp/third_party/libmysofa/mysofaConfig.cmake.in
+/workspaces/Newliveaudioapp/app/src/main/cpp/third_party/libmysofa/src/CMakeLists.txt

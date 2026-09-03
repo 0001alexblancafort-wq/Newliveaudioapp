@@ -1,0 +1,24 @@
+# ninja log v5
+2	1084	1788456735335668062	libmysofa/src/CMakeFiles/mysofa-static.dir/hdf/superblock.c.o	a299f87d6286e2d7
+1	1105	1788456735353668063	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/reader.c.o	4871cc0f31e64aac
+1085	1271	1788456735526668075	libmysofa/src/CMakeFiles/mysofa-static.dir/hdf/dataobject.c.o	1f94f0976f795f35
+1105	1277	1788456735530668075	libmysofa/src/CMakeFiles/mysofa-static.dir/hdf/btree.c.o	c6d20613491a6807
+1277	1514	1788456735759668091	libmysofa/src/CMakeFiles/mysofa-static.dir/hdf/gunzip.c.o	a506276080a4978b
+1272	1531	1788456735778668092	libmysofa/src/CMakeFiles/mysofa-static.dir/hdf/fractalhead.c.o	e6681f51636fbb05
+1515	1605	1788456735860668097	libmysofa/src/CMakeFiles/mysofa-static.dir/hdf/gcol.c.o	72e679f5694848e6
+1531	1674	1788456735912668101	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/check.c.o	59f60ea7715e74d3
+1605	1695	1788456735939668103	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/spherical.c.o	dbed8ae3f78da29b
+1674	1791	1788456736043668110	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/lookup.c.o	9a6f5afd62cf07a9
+1695	1843	1788456736093668113	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/tools.c.o	49d5b8e4e48f0444
+1791	1866	1788456736121668115	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/kdtree.c.o	d7d386a2efb82c59
+1843	1946	1788456736201668121	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/neighbors.c.o	2848299251c1a62
+1866	1962	1788456736214668121	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/interpolate.c.o	a8d75a31c1033133
+1946	2029	1788456736281668126	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/resample.c.o	f00858e769757953
+1964	2040	1788456736292668127	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/loudness.c.o	9f91ee881f9ca75
+2029	2103	1788456736358668131	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/minphase.c.o	bc693c760a395a48
+2103	2167	1788456736420668135	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/cache.c.o	5028a5e027bd1c98
+2040	2171	1788456736424668136	libmysofa/src/CMakeFiles/mysofa-static.dir/hrtf/easy.c.o	937756c03c4f0228
+2167	2452	1788456736708668155	libmysofa/src/CMakeFiles/mysofa-static.dir/resampler/speex_resampler.c.o	e2152dd1ff81f350
+2452	3145	1788456737396668202	libmysofa/src/libmysofa.a	19eb4de671a44407
+0	4032	1788456738274668261	CMakeFiles/spatialaudio.dir/native_spatial_audio.cpp.o	9cc1ee94ae4f21d3
+4040	4088	1788456738341668266	/workspaces/Newliveaudioapp/app/build/intermediates/cxx/Debug/u5k5r5o3/obj/arm64-v8a/libspatialaudio.so	3a0fb0f3267352e9

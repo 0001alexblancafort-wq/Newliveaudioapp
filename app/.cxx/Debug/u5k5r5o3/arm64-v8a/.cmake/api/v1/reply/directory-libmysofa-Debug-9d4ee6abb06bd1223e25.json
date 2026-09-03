@@ -1,0 +1,116 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"third_party/libmysofa/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 42,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 43,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 125,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 129,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 157,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "share/libmysofa",
+			"paths" : 
+			[
+				"third_party/libmysofa/share/default.sofa"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "share/libmysofa",
+			"paths" : 
+			[
+				"third_party/libmysofa/share/MIT_KEMAR_normal_pinna.sofa"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "lib/pkgconfig",
+			"paths" : 
+			[
+				"/workspaces/Newliveaudioapp/app/.cxx/Debug/u5k5r5o3/arm64-v8a/libmysofa/libmysofa.pc"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/mysofa",
+			"exportName" : "mysofa_exports",
+			"exportTargets" : 
+			[
+				{
+					"id" : "mysofa-static::@882873de30debc84a313",
+					"index" : 0
+				}
+			],
+			"paths" : 
+			[
+				"libmysofa/CMakeFiles/Export/lib/cmake/mysofa/mysofaTargets.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 5,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/mysofa",
+			"paths" : 
+			[
+				"/workspaces/Newliveaudioapp/app/.cxx/Debug/u5k5r5o3/arm64-v8a/libmysofa/mysofaConfig.cmake",
+				"/workspaces/Newliveaudioapp/app/.cxx/Debug/u5k5r5o3/arm64-v8a/libmysofa/mysofaConfigVersion.cmake"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "libmysofa",
+		"source" : "third_party/libmysofa"
+	}
+}

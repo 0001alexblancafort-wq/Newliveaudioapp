@@ -1,0 +1,39 @@
+{
+  "buildFiles": [
+    "/workspaces/Newliveaudioapp/app/src/main/cpp/CMakeLists.txt",
+    "/workspaces/Newliveaudioapp/app/src/main/cpp/third_party/libmysofa/CMakeLists.txt",
+    "/workspaces/Newliveaudioapp/app/src/main/cpp/third_party/libmysofa/libmysofa.pc.cmake",
+    "/workspaces/Newliveaudioapp/app/src/main/cpp/third_party/libmysofa/mysofaConfig.cmake.in",
+    "/workspaces/Newliveaudioapp/app/src/main/cpp/third_party/libmysofa/src/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/home/codespace/Android/Sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/workspaces/Newliveaudioapp/app/.cxx/Debug/u5k5r5o3/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/home/codespace/Android/Sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/workspaces/Newliveaudioapp/app/.cxx/Debug/u5k5r5o3/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "mysofa-static::@882873de30debc84a313": {
+      "artifactName": "mysofa-static",
+      "abi": "arm64-v8a",
+      "output": "/workspaces/Newliveaudioapp/app/.cxx/Debug/u5k5r5o3/arm64-v8a/libmysofa/src/libmysofa.a",
+      "runtimeFiles": []
+    },
+    "spatialaudio::@6890427a1f51a3e7e1df": {
+      "artifactName": "spatialaudio",
+      "abi": "arm64-v8a",
+      "output": "/workspaces/Newliveaudioapp/app/build/intermediates/cxx/Debug/u5k5r5o3/obj/arm64-v8a/libspatialaudio.so",
+      "runtimeFiles": [
+        "/home/codespace/.gradle/caches/transforms-3/e0a383d031039971fdc1f8c69ad37454/transformed/oboe-1.8.1/prefab/modules/oboe/libs/android.arm64-v8a/liboboe.so"
+      ]
+    }
+  }
+}
