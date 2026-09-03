@@ -12,12 +12,14 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Usamos * (comodín) o $GITHUB_WORKSPACE para decirle a Git que confíe en la carpeta
       - name: Arreglar error de Git (128)
-        run: git config --global --add safe.directory /github/workspace
+        run: git config --global --add safe.directory '*'
 
       - name: Checkout del repositorio
         uses: actions/checkout@v5
 
+      # Las licencias deben aceptarse antes de instalar nada
       - name: Aceptar licencias de Android
         run: yes | sdkmanager --licenses || true
 
@@ -25,7 +27,6 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           packages: |
-            cmdline-tools;latest
             platforms;android-34
             build-tools;34.0.0
             ndk;26.3.11579264
