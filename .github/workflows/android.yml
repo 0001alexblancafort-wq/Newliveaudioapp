@@ -11,10 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions: read-all
     steps:
-      - uses: actions/checkout@v4
+      - name: areeglar el error del git (128)
+      - uses: git config --global --add safe.directori /github/workspace
+      - uses: actions/checkout@v5
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: |
             platforms;android-34
