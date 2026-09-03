@@ -2,11 +2,14 @@
 #include <android/log.h>
 #include <oboe/Oboe.h>
 #include <algorithm>
+#include <array>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <exception>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -22,7 +25,7 @@
 
 namespace {
 constexpr float kPi = 3.14159265358979323846f;
-constexpr int kFIRSize = 32;
+constexpr int kFIRSize = 256;
 constexpr std::uint32_t kMaxHrtfTaps = 4096;
 
 struct HrtfProfile {
@@ -31,6 +34,13 @@ struct HrtfProfile {
     std::vector<float> right;
     float azimuth = 0.0f;
     float elevation = 0.0f;
+};
+
+struct HrtfPoint {
+    float azimuth = 0.0f;
+    float elevation = 0.0f;
+    std::vector<float> left;
+    std::vector<float> right;
 };
 
 class SpatialAudioEngine {
@@ -46,6 +56,8 @@ public:
         }
 
         history_.assign(kFIRSize, 0.0f);
+        leftHistory_.assign(kFIRSize, 0.0f);
+        rightHistory_.assign(kFIRSize, 0.0f);
         generateFallbackProfile();
 #if SPATIAL_USE_SOFA
         LOGI("Spatial engine initialized with libmysofa: sr=%d, channels=%d", sampleRate_, channels_);
@@ -61,6 +73,8 @@ public:
         profile_.left.clear();
         profile_.right.clear();
         history_.assign(kFIRSize, 0.0f);
+        leftHistory_.assign(kFIRSize, 0.0f);
+        rightHistory_.assign(kFIRSize, 0.0f);
         sampleRate_ = 48000;
         channels_ = 2;
     }
@@ -68,7 +82,7 @@ public:
     void setParameters(float azimuthDeg, float elevationDeg, float proximity) {
         std::lock_guard<std::mutex> lock(mutex_);
         azimuth_ = azimuthDeg;
-        elevation_ = std::clamp(elevationDeg, 0.0f, 90.0f);
+        elevation_ = std::clamp(elevationDeg, -90.0f, 90.0f);
         proximity_ = std::clamp(proximity, 0.0f, 1.0f);
         updateProfileFromParameters();
     }
@@ -85,11 +99,47 @@ public:
         const std::string magicHeader = "HRTF1";
         char header[5] = {0};
         file.read(header, 5);
-        if (file.gcount() != 5 || std::string(header) != magicHeader) {
+        if (file.gcount() != 5 || (std::string(header) != magicHeader && std::string(header) != "HRTF2")) {
             LOGE("Invalid HRTF header in %s", path.c_str());
             generateFallbackProfile();
             return false;
         }
+
+        if (std::string(header) == "HRTF2") {
+            std::uint32_t pointCount = 0;
+            std::uint32_t tapCount = 0;
+            file.read(reinterpret_cast<char*>(&pointCount), sizeof(pointCount));
+            file.read(reinterpret_cast<char*>(&tapCount), sizeof(tapCount));
+            if (!file || pointCount == 0 || pointCount > 4096 || tapCount == 0 || tapCount > kMaxHrtfTaps) {
+                LOGE("Invalid HRTF2 dimensions in %s", path.c_str());
+                generateFallbackProfile();
+                return false;
+            }
+
+            profiles_.clear();
+            profiles_.reserve(pointCount);
+            for (std::uint32_t point = 0; point < pointCount; ++point) {
+                HrtfPoint value;
+                value.left.resize(tapCount);
+                value.right.resize(tapCount);
+                file.read(reinterpret_cast<char*>(&value.azimuth), sizeof(value.azimuth));
+                file.read(reinterpret_cast<char*>(&value.elevation), sizeof(value.elevation));
+                file.read(reinterpret_cast<char*>(value.left.data()), static_cast<std::streamsize>(tapCount * sizeof(float)));
+                file.read(reinterpret_cast<char*>(value.right.data()), static_cast<std::streamsize>(tapCount * sizeof(float)));
+                if (!file) {
+                    LOGE("Truncated HRTF2 file: %s", path.c_str());
+                    generateFallbackProfile();
+                    return false;
+                }
+                profiles_.push_back(std::move(value));
+            }
+            profile_.loaded = true;
+            updateProfileFromParameters();
+            LOGI("Dense HRTF loaded from %s (%u points, %u taps)", path.c_str(), pointCount, tapCount);
+            return true;
+        }
+
+        profiles_.clear();
 
         std::uint32_t leftCount = 0;
         std::uint32_t rightCount = 0;
@@ -128,16 +178,13 @@ public:
         }
 
         const int stride = channels_;
-        std::vector<float> leftHistory(kFIRSize, 0.0f);
-        std::vector<float> rightHistory(kFIRSize, 0.0f);
-
         for (int i = 0; i < frames; ++i) {
             const int base = i * stride;
             const float inL = input[base];
             const float inR = input[base + 1];
 
-            const float leftSample = processSample(inL, inR, true, leftHistory);
-            const float rightSample = processSample(inR, inL, false, rightHistory);
+            const float leftSample = processSample(inL, inR, true, leftHistory_);
+            const float rightSample = processSample(inR, inL, false, rightHistory_);
 
             output[base] = leftSample;
             output[base + 1] = rightSample;
@@ -148,6 +195,7 @@ public:
 
 private:
     void generateFallbackProfile() {
+        profiles_.clear();
         profile_.loaded = false;
         profile_.left.assign(kFIRSize, 0.0f);
         profile_.right.assign(kFIRSize, 0.0f);
@@ -163,7 +211,25 @@ private:
     }
 
     void updateProfileFromParameters() {
-        if (!profile_.loaded) {
+        if (!profiles_.empty()) {
+            const HrtfPoint* nearest = &profiles_.front();
+            float bestDistance = std::numeric_limits<float>::max();
+            for (const HrtfPoint& point : profiles_) {
+                float azimuthDistance = std::fabs(point.azimuth - azimuth_);
+                azimuthDistance = std::min(azimuthDistance, 360.0f - azimuthDistance);
+                const float elevationDistance = point.elevation - elevation_;
+                const float distance = azimuthDistance * azimuthDistance + elevationDistance * elevationDistance;
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    nearest = &point;
+                }
+            }
+            profile_.left = nearest->left;
+            profile_.right = nearest->right;
+            profile_.azimuth = nearest->azimuth;
+            profile_.elevation = nearest->elevation;
+            profile_.loaded = true;
+        } else if (!profile_.loaded) {
             generateFallbackProfile();
         }
     }
@@ -203,23 +269,68 @@ private:
     float elevation_ = 45.0f;
     float proximity_ = 0.5f;
     std::vector<float> history_;
+    std::vector<float> leftHistory_;
+    std::vector<float> rightHistory_;
     HrtfProfile profile_;
+    std::vector<HrtfPoint> profiles_;
 };
 
 std::unique_ptr<SpatialAudioEngine> gEngine;
+
+class PcmRingBuffer {
+public:
+    static constexpr size_t kCapacity = 1u << 18;
+
+    size_t write(const float* input, size_t count) {
+        size_t written = 0;
+        while (written < count) {
+            const size_t writeIndex = writeIndex_.load(std::memory_order_relaxed);
+            const size_t readIndex = readIndex_.load(std::memory_order_acquire);
+            if (writeIndex - readIndex >= kCapacity) break;
+            buffer_[writeIndex % kCapacity] = input[written++];
+            writeIndex_.store(writeIndex + 1, std::memory_order_release);
+        }
+        return written;
+    }
+
+    size_t read(float* output, size_t count) {
+        size_t read = 0;
+        while (read < count) {
+            const size_t readIndex = readIndex_.load(std::memory_order_relaxed);
+            const size_t writeIndex = writeIndex_.load(std::memory_order_acquire);
+            if (readIndex == writeIndex) break;
+            output[read++] = buffer_[readIndex % kCapacity];
+            readIndex_.store(readIndex + 1, std::memory_order_release);
+        }
+        return read;
+    }
+
+    void clear() {
+        const size_t writeIndex = writeIndex_.load(std::memory_order_acquire);
+        readIndex_.store(writeIndex, std::memory_order_release);
+    }
+
+private:
+    std::array<float, kCapacity> buffer_{};
+    std::atomic<size_t> writeIndex_{0};
+    std::atomic<size_t> readIndex_{0};
+};
+
+PcmRingBuffer gInputBuffer;
+std::shared_ptr<oboe::AudioStream> gOutputStream;
 
 class AudioCallback final : public oboe::AudioStreamDataCallback {
 public:
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream* /*stream*/, void* audioData,
                                           int32_t numFrames) override {
         auto* output = static_cast<float*>(audioData);
-        input_.resize(static_cast<size_t>(numFrames) * 2);
-        for (int32_t frame = 0; frame < numFrames; ++frame) {
-            const float time = phase_ / 48000.0f;
-            phase_ += 1.0f;
-            input_[static_cast<size_t>(frame) * 2] = std::sin(2.0f * kPi * 440.0f * time) * 0.2f;
-            input_[static_cast<size_t>(frame) * 2 + 1] = std::sin(2.0f * kPi * 330.0f * time) * 0.2f;
+        const size_t sampleCount = static_cast<size_t>(numFrames) * 2;
+        if (sampleCount > input_.size()) {
+            std::fill(output, output + sampleCount, 0.0f);
+            return oboe::DataCallbackResult::Continue;
         }
+        std::fill(input_.begin(), input_.begin() + sampleCount, 0.0f);
+        gInputBuffer.read(input_.data(), sampleCount);
         if (gEngine == nullptr || gEngine->processBuffer(input_.data(), output, numFrames) != 0) {
             std::fill(output, output + static_cast<size_t>(numFrames) * 2, 0.0f);
         }
@@ -227,11 +338,9 @@ public:
     }
 
 private:
-    std::vector<float> input_;
-    float phase_ = 0.0f;
+    std::array<float, 4096> input_{};
 };
 
-std::shared_ptr<oboe::AudioStream> gOutputStream;
 std::shared_ptr<AudioCallback> gAudioCallback;
 
 #if SPATIAL_USE_SOFA
@@ -245,22 +354,42 @@ bool convertSofaToHrtf(const std::string& sourcePath, const std::string& targetP
         return false;
     }
 
-    std::vector<float> left(static_cast<size_t>(filterLength));
-    std::vector<float> right(static_cast<size_t>(filterLength));
-    float delayLeft = 0.0f;
-    float delayRight = 0.0f;
-    mysofa_getfilter_float(easy, 0.0f, 0.0f, 1.0f, left.data(), right.data(), &delayLeft, &delayRight);
-    mysofa_close(easy);
-
+    constexpr float kAzimuthStep = 15.0f;
+    constexpr float kElevationStep = 15.0f;
+    constexpr int kAzimuthPoints = 24;
+    constexpr int kElevationPoints = 13;
+    const std::uint32_t pointCount = kAzimuthPoints * kElevationPoints;
     std::ofstream file(targetPath, std::ios::binary | std::ios::trunc);
     if (!file.is_open()) return false;
-    const std::uint32_t leftCount = static_cast<std::uint32_t>(left.size());
-    const std::uint32_t rightCount = static_cast<std::uint32_t>(right.size());
-    file.write("HRTF1", 5);
-    file.write(reinterpret_cast<const char*>(&leftCount), sizeof(leftCount));
-    file.write(reinterpret_cast<const char*>(&rightCount), sizeof(rightCount));
-    file.write(reinterpret_cast<const char*>(left.data()), static_cast<std::streamsize>(left.size() * sizeof(float)));
-    file.write(reinterpret_cast<const char*>(right.data()), static_cast<std::streamsize>(right.size() * sizeof(float)));
+    const std::uint32_t tapCount = static_cast<std::uint32_t>(filterLength);
+    file.write("HRTF2", 5);
+    file.write(reinterpret_cast<const char*>(&pointCount), sizeof(pointCount));
+    file.write(reinterpret_cast<const char*>(&tapCount), sizeof(tapCount));
+    for (int elevationIndex = 0; elevationIndex < kElevationPoints; ++elevationIndex) {
+        const float elevation = -90.0f + elevationIndex * kElevationStep;
+        for (int azimuthIndex = 0; azimuthIndex < kAzimuthPoints; ++azimuthIndex) {
+            const float azimuth = -180.0f + azimuthIndex * kAzimuthStep;
+            const float azimuthRadians = azimuth * kPi / 180.0f;
+            const float elevationRadians = elevation * kPi / 180.0f;
+            const float x = std::cos(elevationRadians) * std::cos(azimuthRadians);
+            const float y = std::cos(elevationRadians) * std::sin(azimuthRadians);
+            const float z = std::sin(elevationRadians);
+            std::vector<float> left(static_cast<size_t>(filterLength));
+            std::vector<float> right(static_cast<size_t>(filterLength));
+            float delayLeft = 0.0f;
+            float delayRight = 0.0f;
+            mysofa_getfilter_float(easy, x, y, z, left.data(), right.data(), &delayLeft, &delayRight);
+            file.write(reinterpret_cast<const char*>(&azimuth), sizeof(azimuth));
+            file.write(reinterpret_cast<const char*>(&elevation), sizeof(elevation));
+            file.write(reinterpret_cast<const char*>(left.data()), static_cast<std::streamsize>(left.size() * sizeof(float)));
+            file.write(reinterpret_cast<const char*>(right.data()), static_cast<std::streamsize>(right.size() * sizeof(float)));
+            if (!file) {
+                mysofa_close(easy);
+                return false;
+            }
+        }
+    }
+    mysofa_close(easy);
     return file.good();
 }
 #endif
@@ -366,6 +495,19 @@ Java_com_tuapp_spatialaudio_NativeSpatialAudio_stopAudio(JNIEnv* /*env*/, jobjec
         gOutputStream.reset();
     }
     gAudioCallback.reset();
+    gInputBuffer.clear();
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_tuapp_spatialaudio_NativeSpatialAudio_enqueueAudio(JNIEnv* env, jobject /*thiz*/, jfloatArray samples) {
+    if (samples == nullptr) return 0;
+    const jsize count = env->GetArrayLength(samples);
+    if (count <= 0) return 0;
+    jfloat* data = env->GetFloatArrayElements(samples, nullptr);
+    if (data == nullptr) return 0;
+    const size_t written = gInputBuffer.write(data, static_cast<size_t>(count));
+    env->ReleaseFloatArrayElements(samples, data, JNI_ABORT);
+    return static_cast<jint>(written);
 }
 
 extern "C" JNIEXPORT jint JNICALL

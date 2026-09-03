@@ -1,7 +1,9 @@
 package com.tuapp.spatialaudio
 
 import android.net.Uri
+import android.content.Intent
 import android.os.Bundle
+import android.media.projection.MediaProjectionManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -29,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.PI
@@ -48,10 +51,24 @@ class MainActivity : ComponentActivity() {
             var lastR by remember { mutableFloatStateOf(0f) }
             var importing by remember { mutableStateOf(false) }
             var playing by remember { mutableStateOf(false) }
+            var capturing by remember { mutableStateOf(false) }
 
-            val nativeAudio = remember { NativeSpatialAudio() }
+            val nativeAudio = NativeAudioSession.nativeAudio
             val audioPipeline = remember { AudioPipeline(nativeAudio) }
             val hrtfTarget = File(filesDir, "HRTF.bin")
+            val projectionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                if (result.resultCode == RESULT_OK && result.data != null) {
+                    val serviceIntent = Intent(this@MainActivity, AudioCaptureService::class.java).apply {
+                        putExtra(AudioCaptureService.EXTRA_RESULT_CODE, result.resultCode)
+                        putExtra(AudioCaptureService.EXTRA_RESULT_DATA, result.data)
+                        putExtra(AudioCaptureService.EXTRA_HRTF_PATH, hrtfTarget.absolutePath)
+                    }
+                    ContextCompat.startForegroundService(this@MainActivity, serviceIntent)
+                    capturing = true
+                }
+            }
             val sofaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
                 if (uri == null) return@rememberLauncherForActivityResult
                 importing = true
@@ -176,6 +193,20 @@ class MainActivity : ComponentActivity() {
 
                         Button(
                             onClick = {
+                                if (capturing) {
+                                    stopService(Intent(this@MainActivity, AudioCaptureService::class.java))
+                                    capturing = false
+                                } else {
+                                    val manager = getSystemService(MediaProjectionManager::class.java)
+                                    projectionLauncher.launch(manager.createScreenCaptureIntent())
+                                }
+                            }
+                        ) {
+                            Text(if (capturing) "Detener captura" else "Capturar audio del teléfono")
+                        }
+
+                        Button(
+                            onClick = {
                                 if (playing) {
                                     audioPipeline.stop()
                                 } else {
@@ -184,7 +215,7 @@ class MainActivity : ComponentActivity() {
                                 playing = !playing
                             }
                         ) {
-                            Text(if (playing) "Detener audio" else "Reproducir audio")
+                            Text(if (playing) "Detener salida" else "Activar salida Oboe")
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

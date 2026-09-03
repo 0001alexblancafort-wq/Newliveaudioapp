@@ -12,5 +12,6 @@ class NativeSpatialAudio {
     external fun convertSofaToHrtf(sourcePath: String, targetPath: String, sampleRate: Int): Boolean
     external fun startAudio(): Boolean
     external fun stopAudio()
+    external fun enqueueAudio(samples: FloatArray): Int
     external fun processBuffer(input: FloatArray, output: FloatArray, frames: Int): Int
 }
