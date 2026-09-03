@@ -10,18 +10,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-     contents: read
+      contents: read
     steps:
-      - run: git config --global --add safe.directory /github/workspace
-      - uses: actions/checkout@v5
+      - name: Arreglar error de Git (128)
+        run: git config --global --add safe.directory /github/workspace
 
-      - name: aceptar licencias de Android
+      - name: Checkout del repositorio
+        uses: actions/checkout@v5
+
+      - name: Aceptar licencias de Android
         run: yes | sdkmanager --licenses || true
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: |
+            cmdline-tools;latest
             platforms;android-34
             build-tools;34.0.0
             ndk;26.3.11579264
