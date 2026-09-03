@@ -12,7 +12,6 @@ jobs:
     permissions:
      contents: read
     steps:
-      - name: noname
       - run: git config --global --add safe.directory /github/workspace
       - uses: actions/checkout@v5
 
