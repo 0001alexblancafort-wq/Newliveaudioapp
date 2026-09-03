@@ -13,6 +13,8 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <permission
         android:name="com.tuapp.spatialaudio.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
@@ -53,6 +55,10 @@
                 android:name="android.media.audiofx.MusicFX"
                 android:resource="@xml/musicfx_definition" />
         </service>
+        <service
+            android:name="com.tuapp.spatialaudio.AudioCaptureService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
         <provider
             android:name="androidx.startup.InitializationProvider"

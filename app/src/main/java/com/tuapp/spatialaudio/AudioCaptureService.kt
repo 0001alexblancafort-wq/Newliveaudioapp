@@ -32,7 +32,7 @@ class AudioCaptureService : Service() {
         }
 
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
-        val resultData = intent.parcelableIntentExtra(EXTRA_RESULT_DATA) ?: run {
+        val resultData = intent.parcelableIntentExtra<Intent>(EXTRA_RESULT_DATA) ?: run {
             stopSelf()
             return START_NOT_STICKY
         }
