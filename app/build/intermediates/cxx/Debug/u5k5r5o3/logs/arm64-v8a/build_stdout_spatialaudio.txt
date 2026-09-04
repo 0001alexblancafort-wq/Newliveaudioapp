@@ -1,2 +1,0 @@
-ninja: Entering directory `/workspaces/Newliveaudioapp/app/.cxx/Debug/u5k5r5o3/arm64-v8a'
-ninja: no work to do.
