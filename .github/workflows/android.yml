@@ -29,7 +29,8 @@ jobs:
       - name: Aceptar licencias de Android
         shell: bash
         run: |
-          set -eu
+          set -e
+          set +o pipefail
           yes | sdkmanager --licenses >/dev/null
 
       - name: Instalar herramientas Android
