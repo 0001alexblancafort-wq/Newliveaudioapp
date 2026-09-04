@@ -1,0 +1,3 @@
+[submodule "app/src/main/cpp/third_party/libmysofa"]
+	path = app/src/main/cpp/third_party/libmysofa
+	url = https://github.com/hoene/libmysofa.git
