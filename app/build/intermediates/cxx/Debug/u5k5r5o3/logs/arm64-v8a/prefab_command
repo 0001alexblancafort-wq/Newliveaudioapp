@@ -15,5 +15,5 @@
   --ndk-version \
   26 \
   --output \
-  /tmp/agp-prefab-staging976865874772507591/staged-cli-output \
+  /tmp/agp-prefab-staging7901966253433141060/staged-cli-output \
   /home/codespace/.gradle/caches/transforms-3/e0a383d031039971fdc1f8c69ad37454/transformed/oboe-1.8.1/prefab

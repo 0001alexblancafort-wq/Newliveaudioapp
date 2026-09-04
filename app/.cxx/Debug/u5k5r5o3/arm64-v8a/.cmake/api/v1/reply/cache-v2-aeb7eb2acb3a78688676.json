@@ -414,22 +414,6 @@
 			"value" : "-latomic -lm"
 		},
 		{
-			"name" : "CMAKE_C_COMPILER",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "(This variable does not exist and should not be used)"
-				}
-			],
-			"type" : "UNINITIALIZED",
-			"value" : ""
-		},
-		{
 			"name" : "CMAKE_C_COMPILER_AR",
 			"properties" : 
 			[
@@ -1563,10 +1547,10 @@
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "The CMake toolchain file"
+					"value" : "No help, variable specified on the command line."
 				}
 			],
-			"type" : "FILEPATH",
+			"type" : "UNINITIALIZED",
 			"value" : "/home/codespace/Android/Sdk/ndk/26.3.11579264/build/cmake/android.toolchain.cmake"
 		},
 		{
