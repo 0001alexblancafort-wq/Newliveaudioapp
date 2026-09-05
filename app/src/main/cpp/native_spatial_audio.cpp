@@ -466,6 +466,7 @@ Java_com_tuapp_spatialaudio_NativeSpatialAudio_startAudio(JNIEnv* /*env*/, jobje
         ->setChannelCount(2)
         ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
         ->setSharingMode(oboe::SharingMode::Shared)
+        ->setUsage(oboe::Usage::Game)
         ->setDataCallback(gAudioCallback.get());
 
     oboe::Result result = builder.openStream(gOutputStream);
